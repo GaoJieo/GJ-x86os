@@ -2,7 +2,12 @@
 #ifndef LOADER_H
 #define LOADER_H
 
+#include "comm/types.h"
 #include "comm/boot_info.h"
+#include "comm/cpu_instr.h"
+
+// 保护模式入口函数，在start.asm中定义
+void protect_mode_entry (void);
 
 // 内存检测信息结构
 typedef struct SMAP_entry {

@@ -11,7 +11,8 @@
         "_default_fcntl.h": "c",
         "loader.h": "c",
         "boot_info.h": "c",
-        "elf.h": "c"
+        "elf.h": "c",
+        "klib.h": "c"
     },
     "workbench.editorAssociations": [
     {

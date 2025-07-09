@@ -124,8 +124,8 @@ simple_switch:
 	push %esi
 	push %edi
 
-	// 切换栈
-	mov %esp, (%eax)    // from->stack = esp
+	// 进程切换的核心，切换栈
+	mov %esp, (%eax)    // from->stack = esp，main的任务栈也是在这里初始化的
   	mov %edx, %esp      // esp = to->stack
 
 	// 加载下一任务的栈

@@ -12,7 +12,8 @@
         "loader.h": "c",
         "boot_info.h": "c",
         "elf.h": "c",
-        "klib.h": "c"
+        "klib.h": "c",
+        "list.h": "c"
     },
     "workbench.editorAssociations": [
     {

@@ -3,6 +3,7 @@
  */
 #include "comm/cpu_instr.h"
 #include "cpu/cpu.h"
+#include "cpu/irq.h"
 #include "os_cfg.h"
 
 static segment_desc_t gdt_table[GDT_TABLE_SIZE];
@@ -42,15 +43,21 @@ void gate_desc_set(gate_desc_t * desc, uint16_t selector, uint32_t offset, uint1
  * 分配一个GDT推荐表符
  */
 int gdt_alloc_desc (void) {
+    int i;
+
+    irq_state_t state = irq_enter_protection();
+    
     // 跳过第0项
-    for (int i = 1; i < GDT_TABLE_SIZE; i++) {
+    for (i = 1; i < GDT_TABLE_SIZE; i++) {
         segment_desc_t * desc = gdt_table + i;
         if (desc->attr == 0) {
-            return i * sizeof(segment_desc_t);
+            desc->attr = SEG_P_PRESENT;     // 标记为占用状态
+            break;
         }
     }
+    irq_leave_protection(state);
 
-    return -1;
+    return i >= GDT_TABLE_SIZE ? -1 : i * sizeof(segment_desc_t);;
 }
 
 /**

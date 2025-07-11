@@ -11,6 +11,7 @@
 #include "tools/log.h"
 #include "tools/klib.h"
 #include "tools/list.h"
+#include "ipc/sem.h"
 
 
 static boot_info_t * init_boot_info;        // 启动信息
@@ -35,6 +36,7 @@ void kernel_init (boot_info_t * boot_info) {
 
 static uint32_t init_task_stack[800];	// 空闲任务堆栈
 static task_t init_task;
+static sem_t sem;
 
 /**
  * 初始任务函数
@@ -44,6 +46,7 @@ void init_task_entry(void) {
     int count = 0;
 
     for (;;) {
+        sem_wait(&sem);
         log_printf("init task: %d", count++);
         sys_msleep(2000);
     }
@@ -59,12 +62,18 @@ void init_main(void) {
     task_init(&init_task, "init task", (uint32_t)init_task_entry, (uint32_t)&init_task_stack[1024]);
     task_first_init();
 
+    // 放在开中断前，以避免定时中断切换至其它任务，而此时信号量还未初始化
+    sem_init(&sem, 2);
     irq_enable_global();
 
     //int a = 3 / 0;
     int count = 0;
     for (;;) {
         log_printf("first task: %d", count++);
+
+        // 发消息给init task，可以打印了
+        sem_notify(&sem);
+
         sys_msleep(1000);
     }
 }

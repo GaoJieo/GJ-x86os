@@ -13,7 +13,8 @@
         "boot_info.h": "c",
         "elf.h": "c",
         "klib.h": "c",
-        "list.h": "c"
+        "list.h": "c",
+        "irq.h": "c"
     },
     "workbench.editorAssociations": [
     {

@@ -58,6 +58,7 @@ int task_init (task_t *task, const char * name, uint32_t entry, uint32_t esp) {
     task->slice_ticks = task->time_slice;
     list_node_init(&task->all_node);
     list_node_init(&task->run_node);
+    list_node_init(&task->wait_node);
 
     // 插入就绪队列中和所有的任务队列中
     irq_state_t state = irq_enter_protection();

@@ -26,11 +26,11 @@ void kernel_init (boot_info_t * boot_info) {
 
     // 初始化CPU，再重新加载
     cpu_init();
+    log_init();
 
     // 内存初始化要放前面一点，因为后面的代码可能需要内存分配
     memory_init(boot_info);
     
-    log_init();
     irq_init();
     time_init();
 
@@ -38,24 +38,32 @@ void kernel_init (boot_info_t * boot_info) {
 }
 
 
-static uint32_t init_task_stack[800];	// 空闲任务堆栈
-static task_t init_task;
-static sem_t sem;
-
 /**
- * 初始任务函数
- * 目前暂时用函数表示，以后将会作为加载为进程
+ * @brief 移至第一个进程运行
  */
-void init_task_entry(void) {
-    int count = 0;
+void move_to_first_task(void) {
+    // 不能直接用Jmp far进入，因为当前特权级0，不能跳到低特权级的代码
+    // 下面的iret后，还需要手动加载ds, fs, es等寄存器值，iret不会自动加载
+    // 注意，运行下面的代码可能会产生异常：段保护异常或页保护异常。
+    // 可根据产生的异常类型和错误码，并结合手册来找到问题所在
+    task_t * curr = task_current();
+    ASSERT(curr != 0);
 
-    for (;;) {
-        sem_wait(&sem);
-        log_printf("init task: %d", count++);
-        sys_msleep(2000);
-    }
+    tss_t * tss = &(curr->tss);
+
+    // 也可以使用类似boot跳loader中的函数指针跳转
+    // 这里用jmp是因为后续需要使用内联汇编添加其它代码
+    __asm__ __volatile__(
+        // 模拟中断返回，切换入第1个可运行应用进程
+        // 不过这里并不直接进入到进程的入口，而是先设置好段寄存器，再跳过去
+        "push %[ss]\n\t"			// SS
+        "push %[esp]\n\t"			// ESP
+        "push %[eflags]\n\t"           // EFLAGS
+        "push %[cs]\n\t"			// CS
+        "push %[eip]\n\t"		    // ip
+        "iret\n\t"::[ss]"r"(tss->ss),  [esp]"r"(tss->esp), [eflags]"r"(tss->eflags),
+        [cs]"r"(tss->cs), [eip]"r"(tss->eip));
 }
-
 
 void init_main(void) {
     log_printf("Kernel is running....");
@@ -63,21 +71,6 @@ void init_main(void) {
     log_printf("%d %d %x %c", -123, 123456, 0x12345, 'a');
 
     // 初始化任务
-    task_init(&init_task, "init task", (uint32_t)init_task_entry, (uint32_t)&init_task_stack[1024]);
     task_first_init();
-
-    // 放在开中断前，以避免定时中断切换至其它任务，而此时信号量还未初始化
-    sem_init(&sem, 2);
-    irq_enable_global();
-
-    //int a = 3 / 0;
-    int count = 0;
-    for (;;) {
-        log_printf("first task: %d", count++);
-
-        // 发消息给init task，可以打印了
-        sem_notify(&sem);
-
-        sys_msleep(1000);
-    }
+    move_to_first_task();
 }

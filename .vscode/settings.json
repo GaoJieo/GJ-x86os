@@ -14,7 +14,8 @@
         "elf.h": "c",
         "klib.h": "c",
         "list.h": "c",
-        "irq.h": "c"
+        "irq.h": "c",
+        "mmu.h": "c"
     },
     "workbench.editorAssociations": [
     {

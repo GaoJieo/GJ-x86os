@@ -69,6 +69,7 @@ static int tss_init (task_t * task, int flag, uint32_t entry, uint32_t esp) {
     task->tss_sel = tss_sel;
     return 0;
 
+    // 使用goto，减少代码冗余
 tss_init_failed:
     gdt_free_sel(tss_sel);
 
@@ -102,6 +103,7 @@ int task_init (task_t *task, const char * name, int flag, uint32_t entry, uint32
 
     // 插入就绪队列中和所有的任务队列中
     irq_state_t state = irq_enter_protection();
+    task->pid = (uint32_t)task;   // 使用地址，能唯一
     task_set_ready(task);
     list_insert_last(&task_manager.task_list, &task->all_node);
     irq_leave_protection(state);
@@ -148,7 +150,7 @@ void task_first_init (void) {
     // 更新页表地址为自己的
     mmu_set_page_dir(task_manager.first_task.tss.cr3);
 
-    // 分配一页内存供代码存放使用，然后将代码复制过去
+    // 分配一页内存供代码存放使用，然后将代码复制过去，防止后续扩充所以扩大了十倍
     memory_alloc_page_for(first_start,  alloc_size, PTE_P | PTE_W | PTE_U);
     kernel_memcpy((void *)first_start, (void *)s_first_task, copy_size);
 
@@ -362,4 +364,12 @@ void sys_msleep (uint32_t ms) {
     task_dispatch();
 
     irq_leave_protection(state);
+}
+
+/**
+ * 返回任务的pid
+ */
+int sys_getpid (void) {
+    task_t * curr_task = task_current();
+    return curr_task->pid;
 }

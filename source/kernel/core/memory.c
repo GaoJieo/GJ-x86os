@@ -84,7 +84,9 @@ static uint32_t total_mem_size(boot_info_t * boot_info) {
     }
     return mem_size;
 }
-
+/**
+ * @brief 返回物理页首地址，二级页表项
+ */
 pte_t * find_pte (pde_t * page_dir, uint32_t vaddr, int alloc) {
     pte_t * page_table;
 
@@ -120,6 +122,7 @@ pte_t * find_pte (pde_t * page_dir, uint32_t vaddr, int alloc) {
 
 /**
  * @brief 将指定的地址空间进行一页的映射
+ * @param paddr 4kb对齐的物理地址，后12位为0
  */
 int memory_create_map (pde_t * page_dir, uint32_t vaddr, uint32_t paddr, int count, uint32_t perm) {
     for (int i = 0; i < count; i++) {
@@ -206,7 +209,9 @@ uint32_t memory_create_uvm (void) {
 
 uint32_t memory_alloc_for_page_dir (uint32_t page_dir, uint32_t vaddr, uint32_t size, int perm) {
     uint32_t curr_vaddr = vaddr;
+    // 分配足够多的页
     int page_count = up2(size, MEM_PAGE_SIZE) / MEM_PAGE_SIZE;
+    // 使其接着上一个4kb页，
     vaddr = down2(vaddr, MEM_PAGE_SIZE);
 
     // 逐页分配内存，然后建立映射关系

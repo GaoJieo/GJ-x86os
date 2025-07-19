@@ -14,7 +14,7 @@
 
 #define PIT_CHANNLE0                (0 << 6)
 #define PIT_LOAD_LOHI               (3 << 4)
-#define PIT_MODE0                   (3 << 1)
+#define PIT_MODE3                   (3 << 1)
 
 void time_init (void);
 void exception_handler_timer (void);

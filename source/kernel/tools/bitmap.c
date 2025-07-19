@@ -40,7 +40,7 @@ void bitmap_set_bit (bitmap_t * bitmap, int index, int count, int bit) {
  * @brief 获取指定位的状态，由于一个字节表示八位因此不能简单的通过index进行索引
  */
 int bitmap_get_bit (bitmap_t * bitmap, int index) {
-    return bitmap->bits[index / 8] & (1 << (index % 8));
+    return bitmap->bits[index / 8] & (1 << (index % 8)) ? 1 : 0;
 }
 
 /**

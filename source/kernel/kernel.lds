@@ -6,11 +6,11 @@ SECTIONS
 	
 	PROVIDE(s_text = .);        /* 代码段起始地址*/
 	.text : {                  /* 代码段放在 0x00010000 开始 */
-		*(.text)
+		*(EXCLUDE_FILE(*first_task*) .text)
 	} 
 
 	.rodata : {                /* 这个段的地址紧跟代码段 在链接时就会确定好*/
-		*(.rodata)
+		*(EXCLUDE_FILE(*first_task*) .rodata)
 	}
 
 	PROVIDE(e_text = .);       /* 代码段和只读段结束地址 text_size = e_text - s_text; */
@@ -19,10 +19,10 @@ SECTIONS
 	PROVIDE(s_data = .);       /* 数据段起始地址 */
 
 	.data : {
-		*(.data)
+		*(EXCLUDE_FILE(*first_task*) .data)
 	}
 	.bss : {
-		*(.bss)
+		*(EXCLUDE_FILE(*first_task*) .bss)
 	}
 	
 	e_data = .;

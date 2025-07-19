@@ -35,7 +35,8 @@ static void init_pit (void) {
      * PIT_LOAD_LOHI：先写低 8 位，再写高 8 位
      * PIT_MODE0：工作模式 0，中断终端计数器模式
      */
-    outb(PIT_COMMAND_MODE_PORT, PIT_CHANNLE0 | PIT_LOAD_LOHI | PIT_MODE0);
+    // outb(PIT_COMMAND_MODE_PORT, PIT_CHANNLE0 | PIT_LOAD_LOHI | PIT_MODE0);
+    outb(PIT_COMMAND_MODE_PORT, PIT_CHANNLE0 | PIT_LOAD_LOHI | PIT_MODE3);
     outb(PIT_CHANNEL0_DATA_PORT, reload_count & 0xFF);   // 加载低8位
     outb(PIT_CHANNEL0_DATA_PORT, (reload_count >> 8) & 0xFF); // 再加载高8位
 

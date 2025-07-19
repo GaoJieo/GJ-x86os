@@ -13,6 +13,12 @@
 
 #define TASK_FLAG_SYSTEM       	(1 << 0)		// 系统任务
 
+typedef struct _task_args_t {
+	uint32_t ret_addr;		// 返回地址，无用
+	uint32_t argc;
+	char **argv;
+}task_args_t;
+
 /**
  * @brief 任务控制块结构
  */
@@ -28,6 +34,7 @@ typedef struct _task_t {
     char name[TASK_NAME_SIZE];		// 任务名字
 
     int pid;				// 进程的pid
+    struct _task_t * parent;		// 父进程
 
     int sleep_ticks;		// 睡眠时间
     int time_slice;			// 时间片
@@ -72,6 +79,8 @@ void task_first_init (void);
 task_t * task_first_task (void);
 
 int sys_getpid (void);
+int sys_fork (void);
+int sys_execve(char *name, char **argv, char **env);
 
 #endif
 

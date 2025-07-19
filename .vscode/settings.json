@@ -15,7 +15,8 @@
         "klib.h": "c",
         "list.h": "c",
         "irq.h": "c",
-        "mmu.h": "c"
+        "mmu.h": "c",
+        "syscall.h": "c"
     },
     "workbench.editorAssociations": [
     {

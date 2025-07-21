@@ -16,7 +16,9 @@
         "list.h": "c",
         "irq.h": "c",
         "mmu.h": "c",
-        "syscall.h": "c"
+        "syscall.h": "c",
+        "stdlib.h": "c",
+        "stdio.h": "c"
     },
     "workbench.editorAssociations": [
     {

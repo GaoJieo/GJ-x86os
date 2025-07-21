@@ -101,6 +101,8 @@ int task_init (task_t *task, const char * name, int flag, uint32_t entry, uint32
     task->time_slice = TASK_TIME_SLICE_DEFAULT;
     task->slice_ticks = task->time_slice;
     task->parent = (task_t *)0;
+    task->heap_start = 0;
+    task->heap_end = 0;
     list_node_init(&task->all_node);
     list_node_init(&task->run_node);
     list_node_init(&task->wait_node);
@@ -108,7 +110,8 @@ int task_init (task_t *task, const char * name, int flag, uint32_t entry, uint32
     // 插入就绪队列中和所有的任务队列中
     irq_state_t state = irq_enter_protection();
     task->pid = (uint32_t)task;   // 使用地址，能唯一
-    task_set_ready(task);
+
+    //task_set_ready(task);
     list_insert_last(&task_manager.task_list, &task->all_node);
     irq_leave_protection(state);
     return 0;
@@ -177,6 +180,8 @@ void task_first_init (void) {
     // 第一个任务代码量小一些，好和栈放在1个页面呢
     // 这样就不要立即考虑还要给栈分配空间的问题
     task_init(&task_manager.first_task, "first task", 0, first_start, first_start + alloc_size);
+    task_manager.first_task.heap_start = (uint32_t)e_first_task;  // 这里不对
+    task_manager.first_task.heap_end = task_manager.first_task.heap_start;
     task_manager.curr_task = &task_manager.first_task;
 
     // 更新页表地址为自己的
@@ -184,7 +189,7 @@ void task_first_init (void) {
 
     // 分配一页内存供代码存放使用，然后将代码复制过去，防止后续扩充所以扩大了十倍
     memory_alloc_page_for(first_start,  alloc_size, PTE_P | PTE_W | PTE_U);
-    kernel_memcpy((void *)first_start, (void *)s_first_task, copy_size);
+    kernel_memcpy((void *)first_start, (void *)&s_first_task, copy_size);
 
     // 启动进程
     task_start(&task_manager.first_task);
@@ -605,6 +610,10 @@ static uint32_t load_elf_file (task_t * task, const char * name, uint32_t page_d
             log_printf("load program hdr failed");
             goto load_failed;
         }
+
+        // 简单起见，不检查了，以最后的地址为bss的地址
+        task->heap_start = elf_phdr.p_vaddr + elf_phdr.p_memsz;
+        task->heap_end = task->heap_start;
    }
 
     sys_close(file);
@@ -629,7 +638,7 @@ static int copy_args (char * to, uint32_t page_dir, int argc, char **argv) {
 
     // 复制各项参数, 跳过task_args和参数表
     // 各argv参数写入的内存空间
-    char * dest_arg = to + sizeof(task_args_t) + sizeof(char *) * (argc);   // 留出结束符
+    char * dest_arg = to + sizeof(task_args_t) + sizeof(char *) * (argc + 1);   // 留出结束符
     
     // argv表
     char ** dest_argv_tb = (char **)memory_get_paddr(page_dir, (uint32_t)(to + sizeof(task_args_t)));
@@ -648,6 +657,10 @@ static int copy_args (char * to, uint32_t page_dir, int argc, char **argv) {
 
         // 记录下位置后，复制的位置前移
         dest_arg += len;
+    }
+    // 可能存在无参的情况，此时不需要写入
+    if (argc) {
+        dest_argv_tb[argc] = '\0';
     }
 
      // 写入task_args

@@ -6,11 +6,11 @@ SECTIONS
 	
 	PROVIDE(s_text = .);        /* 代码段起始地址*/
 	.text : {                  /* 代码段放在 0x00010000 开始 */
-		*(EXCLUDE_FILE(*first_task*) .text)
+		*(EXCLUDE_FILE(*first_task* *lib_syscall*) .text)
 	} 
 
 	.rodata : {                /* 这个段的地址紧跟代码段 在链接时就会确定好*/
-		*(EXCLUDE_FILE(*first_task*) .rodata)
+		*(EXCLUDE_FILE(*first_task* *lib_syscall*) .rodata)
 	}
 
 	PROVIDE(e_text = .);       /* 代码段和只读段结束地址 text_size = e_text - s_text; */
@@ -19,10 +19,10 @@ SECTIONS
 	PROVIDE(s_data = .);       /* 数据段起始地址 */
 
 	.data : {
-		*(EXCLUDE_FILE(*first_task*) .data)
+		*(EXCLUDE_FILE(*first_task* *lib_syscall*) .data)
 	}
 	.bss : {
-		*(EXCLUDE_FILE(*first_task*) .bss)
+		*(EXCLUDE_FILE(*first_task* *lib_syscall*) .bss)
 	}
 	
 	e_data = .;
@@ -34,6 +34,7 @@ SECTIONS
 	.first_task : AT(e_data) {
 		*first_task_entry*(.text .data. rodata .data)
 		*first_task*(.text .data. rodata .data)
+	    *lib_syscall*(.text .data .bss)
 	}
 	PROVIDE(e_first_task = LOADADDR(.first_task) + SIZEOF(.first_task));
 

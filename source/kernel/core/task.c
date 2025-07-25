@@ -450,6 +450,7 @@ int sys_fork (void) {
         goto fork_failed;
     }
 
+    // 减去一个 syscall_frame_t 大小，等于内核栈指针升高syscall_frame_t位，这时恰好为我们首次传入do_haddler时的syscall_frame_t信息
     syscall_frame_t * frame = (syscall_frame_t *)(parent_task->tss.esp0 - sizeof(syscall_frame_t));
 
     // 对子进程进行初始化，并对必要的字段进行调整
@@ -481,12 +482,16 @@ int sys_fork (void) {
     child_task->parent = parent_task;
 
     // 复制父进程的内存空间到子进程
+    // 复制前需要销毁原来创建的物理页表
+    memory_destroy_uvm(child_task->tss.cr3);
     if ((child_task->tss.cr3 = memory_copy_uvm(parent_task->tss.cr3)) < 0) {
         goto fork_failed;
     }
 
-    // 创建成功，返回子进程的pid
+
+    // 将子进程任务加入就绪任务列表
     task_start(child_task);
+    // 创建成功，返回子进程的pid(任务块地址)
     return child_task->pid;
 fork_failed:
     if (child_task) {
@@ -712,7 +717,7 @@ int sys_execve(char *name, char **argv, char **env) {
     // 当该进程恢复运行时，像完全重新运行一样，所以用户栈要设置成初始模式
     // 运行地址要设备成整个程序的入口地址
     syscall_frame_t * frame = (syscall_frame_t *)(task->tss.esp0 - sizeof(syscall_frame_t));
-    frame->eip = entry;
+    frame->eip = entry;   // 点睛之笔
     frame->eax = frame->ebx = frame->ecx = frame->edx = 0;
     frame->esi = frame->edi = frame->ebp = 0;
     frame->eflags = EFLAGS_DEFAULT| EFLAGS_IF;  // 段寄存器无需修改

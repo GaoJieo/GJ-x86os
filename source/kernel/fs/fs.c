@@ -8,6 +8,7 @@
 #include "comm/boot_info.h"
 #include <sys/stat.h>
 
+#include "dev/console.h"
 #include "tools/log.h"
 
 #define TEMP_FILE_ID		100
@@ -76,8 +77,8 @@ int sys_read(int file, char *ptr, int len) {
  * 写文件
  */
 int sys_write(int file, char *ptr, int len) {
-    ptr[len] = '\0';
-    log_printf("%s", ptr);
+    console_write(0, ptr, len);
+    //log_printf("%s", ptr);
     return len;
 }
 

@@ -9,6 +9,7 @@
  * 执行系统调用
  */
 static inline int sys_call (syscall_args_t * args) {
+    // 一个门描述符由8个字节组成，一个long为4字节，两个long填充一个门描述符
     const unsigned long sys_gate_addr[] = {0, SELECTOR_SYSCALL | 0};  // 使用特权级0
     int ret;
 
@@ -21,11 +22,11 @@ static inline int sys_call (syscall_args_t * args) {
             "push %[arg1]\n\t"
             "push %[arg0]\n\t"
             "push %[id]\n\t"
-            "lcalll *(%[gate])\n\n"
+             "lcalll *(%[gate])\n\n"
             :"=a"(ret)
             :[arg3]"r"(args->arg3), [arg2]"r"(args->arg2), [arg1]"r"(args->arg1),
-    [arg0]"r"(args->arg0), [id]"r"(args->id),
-    [gate]"r"(sys_gate_addr));
+            [arg0]"r"(args->arg0), [id]"r"(args->id),
+            [gate]"r"(sys_gate_addr));
     return ret;
 }
 

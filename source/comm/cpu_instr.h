@@ -83,6 +83,7 @@ static inline void write_cr4(uint32_t v) {
 }
 
 static inline void far_jump(uint32_t selector, uint32_t offset) {
+	// 低 4 字节是偏移量 EIP，高 2 字节是段选择子 CS/TSS 选择子
 	uint32_t addr[] = {offset, selector };
 	__asm__ __volatile__("ljmpl *(%[a])"::[a]"r"(addr));
 }

@@ -50,7 +50,8 @@ gdt_reload:
 	    .extern do_handler_\name
 		.global exception_handler_\name
 	exception_handler_\name:
-		// 如果没有错误码，压入一个缺省值
+		// 有错误玛时cpu自动压入
+		// 如果没有错误码，手动压入一个缺省值
 		// 这样堆栈就和有错误码的情形一样了
 		.if \with_error_code == 0
 			push $0
@@ -106,6 +107,7 @@ exception_handler virtual_exception, 20, 0
 
 // 硬件中断
 exception_handler timer, 0x20, 0
+exception_handler kbd, 0x21, 0
 
 // eax, ecx, edx由调用者自动保存
 // ebx, esi, edi, ebp需要由被调用者保存和恢复
@@ -139,15 +141,16 @@ simple_switch:
     .extern do_handler_syscall
 exception_handler_syscall:
 	// 保存前一任务的状态
-	pusha
+	pushal
 	push %ds
 	push %es
 	push %fs
 	push %gs
-	pushf
+	pushfl
 
 	// 使用内核段寄存器，避免使用应用层的
 	mov $(KERNEL_SELECTOR_DS), %eax
+	// 主要目的是修改这些段寄存器的CPL，修改完之后才是内核段
 	mov %eax, %ds
 	mov %eax, %es
 	mov %eax, %fs

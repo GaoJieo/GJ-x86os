@@ -6,6 +6,7 @@
 #include "core/memory.h"
 #include "tools/klib.h"
 #include "cpu/mmu.h"
+#include "dev/console.h"
 
 static addr_alloc_t paddr_alloc;        // 物理地址分配结构
 static pde_t kernel_page_dir[PDE_CNT] __attribute__((aligned(MEM_PAGE_SIZE))); // 内核页目录表
@@ -162,6 +163,7 @@ void create_kernel_table (void) {
         {kernel_base,   s_text,         0,              PTE_W},         // 内核栈区
         {s_text,        e_text,         s_text,         0},         // 内核代码区 ，权限0表示只读
         {s_data,        (void *)(MEM_EBDA_START - 1),   s_data,        PTE_W},      // 内核数据区
+        {(void *)CONSOLE_DISP_ADDR, (void *)(CONSOLE_DISP_END - 1), (void *)CONSOLE_VIDEO_BASE, PTE_W},
 
         // 扩展存储空间一一映射，方便直接操作
         {(void *)MEM_EXT_START, (void *)MEM_EXT_END,     (void *)MEM_EXT_START, PTE_W},
@@ -250,7 +252,7 @@ uint32_t memory_copy_uvm (uint32_t page_dir) {
         goto copy_uvm_failed;
     }
 
-    // 再复制用户空间的各项
+    // 再复制父进程用户空间的各项
     uint32_t user_pde_start = pde_index(MEMORY_TASK_BASE);
     pde_t * pde = (pde_t *)page_dir + user_pde_start;
 

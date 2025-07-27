@@ -20,7 +20,10 @@
         "stdlib.h": "c",
         "stdio.h": "c",
         "random": "c",
-        "stat.h": "c"
+        "stat.h": "c",
+        "cpu_instr.h": "c",
+        "fs.h": "c",
+        "dev.h": "c"
     },
     "workbench.editorAssociations": [
     {

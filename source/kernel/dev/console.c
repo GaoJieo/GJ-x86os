@@ -4,10 +4,15 @@
 #include "dev/console.h"
 #include "tools/klib.h"
 #include "comm/cpu_instr.h"
+#include "dev/tty.h"
+#include "cpu/irq.h"
 
-#define CONSOLE_NR          1           // 控制台的数量
+#define CONSOLE_NR          8           // 控制台的数量
 
 static console_t console_buf[CONSOLE_NR];
+
+static int curr_console_idx = 0;
+
 
 /**
  * @brief 读取当前光标的位置
@@ -15,10 +20,14 @@ static console_t console_buf[CONSOLE_NR];
 static int read_cursor_pos (void) {
     int pos;
 
+    irq_state_t state = irq_enter_protection();
+
  	outb(0x3D4, 0x0F);		// 写低地址
 	pos = inb(0x3D5);
 	outb(0x3D4, 0x0E);		// 写高地址
 	pos |= inb(0x3D5) << 8;   
+
+    irq_leave_protection(state);
     return pos;
 }
 
@@ -26,12 +35,36 @@ static int read_cursor_pos (void) {
  * @brief 更新鼠标的位置
  */
 static void update_cursor_pos (console_t * console) {
-	uint16_t pos = console->cursor_row *  console->display_cols + console->cursor_col;
+	uint16_t pos = (console - console_buf) * (console->display_cols * console->display_rows);
+    pos += console->cursor_row *  console->display_cols + console->cursor_col;
+
+    irq_state_t state = irq_enter_protection();
 
 	outb(0x3D4, 0x0F);		// 写低地址
 	outb(0x3D5, (uint8_t) (pos & 0xFF));
 	outb(0x3D4, 0x0E);		// 写高地址
 	outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
+
+    irq_leave_protection(state);
+}
+
+void console_select(int idx) {
+    console_t * console = console_buf + idx;
+    if (console->disp_base == 0) {
+        // 可能没有初始化，先初始化一下
+        console_init(idx);
+    }
+
+	uint16_t pos = idx * console->display_cols * console->display_rows;
+
+	outb(0x3D4, 0xC);		// 写高地址
+	outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
+	outb(0x3D4, 0xD);		// 写低地址
+	outb(0x3D5, (uint8_t) (pos & 0xFF));
+
+    // 更新光标到当前屏幕
+    curr_console_idx = idx;
+    update_cursor_pos(console);
 }
 
 /**
@@ -181,26 +214,27 @@ void restore_cursor(console_t * console) {
 /**
  * 初始化控制台及键盘
  */
-int console_init (void) {
-    for (int i = 0; i < CONSOLE_NR; i++) {
-        console_t *console = console_buf + i;
+int console_init (int idx) {
+    console_t *console = console_buf + idx;
 
-        console->disp_base = (disp_char_t *) CONSOLE_DISP_ADDR;
-        console->display_cols = CONSOLE_COL_MAX;
-        console->display_rows = CONSOLE_ROW_MAX;
+    console->display_cols = CONSOLE_COL_MAX;
+    console->display_rows = CONSOLE_ROW_MAX;
+    console->disp_base = (disp_char_t *) CONSOLE_DISP_ADDR + idx * console->display_cols * console->display_rows;
 
+    console->foreground = COLOR_White;
+    console->background = COLOR_Black;
+    if (idx == 0) {
         int cursor_pos = read_cursor_pos();
         console->cursor_row = cursor_pos / console->display_cols;
         console->cursor_col = cursor_pos % console->display_cols;
-        console->old_cursor_row = console->cursor_row;
-        console->old_cursor_col = console->cursor_col;
-        console->foreground = COLOR_White;
-        console->background = COLOR_Black;
-
-        // clear_display(console);
-        // update_cursor_pos(console);
+    } else {
+        console->cursor_row = 0;
+        console->cursor_col = 0;
+        clear_display(console);
     }
 
+    console->old_cursor_row = console->cursor_row;
+    console->old_cursor_col = console->cursor_col;
 	return 0;
 }
 
@@ -238,7 +272,7 @@ static void write_normal (console_t * console, char c) {
             move_to_col0(console);
             break;
         case '\n':  // 暂时这样处理
-            move_to_col0(console);
+            //move_to_col0(console);
             move_next_line(console);
             break;
             // 普通字符显示
@@ -409,12 +443,21 @@ static void write_esc_square (console_t * console, char c) {
  * 实现pwdget作为tty的输出
  * 可能有多个进程在写，注意保护
  */
-int console_write (int dev, char * data, int size) {
-	console_t * console = console_buf + dev;
+int console_write (tty_t * tty) {
+	console_t * console = console_buf + tty->console_idx;
 
-    int len;
-	for (len = 0; len < size; len++){
-        char c = *data++;
+    int len = 0;
+    do {
+        char c;
+
+        // 取字节数据
+        int err = tty_fifo_get(&tty->ofifo, &c);
+        if (err < 0) {
+            break;
+        }
+        sem_notify(&tty->osem);
+
+        // 显示出来
         switch (console->write_state) {
             case CONSOLE_WRITE_NORMAL: {
                 write_normal(console, c);
@@ -427,8 +470,12 @@ int console_write (int dev, char * data, int size) {
                 write_esc_square(console, c);
                 break;
         }
+        len++;
+    }while (1);
+
+    if (tty->console_idx == curr_console_idx) {
+        update_cursor_pos(console);
     }
-    update_cursor_pos(console);
     return len;
 }
 

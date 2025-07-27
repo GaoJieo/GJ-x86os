@@ -22,6 +22,9 @@
 #define SYS_isatty              55
 #define SYS_sbrk                56
 #define SYS_fstat               57
+#define SYS_dup              	58
+
+
 
 /**
  * 系统调用的栈信息

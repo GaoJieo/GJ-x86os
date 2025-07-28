@@ -72,7 +72,7 @@ static int is_path_valid (const char * path) {
  * 打开文件
  */
 int sys_open(const char *name, int flags, ...) {
-	if (kernel_strncmp(name, "tty", 3) == 0) {
+	if (kernel_strncmp(name, "tty", 3) == 0) {   // tty设备分支
         if (!is_path_valid(name)) {
             log_printf("path is not valid.");
             return -1;
@@ -115,7 +115,7 @@ sys_open_failed:
 			task_remove_fd(fd);
 		}
 		return -1;
-	} else {
+	} else {    // 内存映射分支
 		if (name[0] == '/') {
             // 暂时直接从扇区5000上读取, 读取大概40KB，足够了
             read_disk(5000, 80, (uint8_t *)TEMP_ADDR);

@@ -23,7 +23,9 @@
         "stat.h": "c",
         "cpu_instr.h": "c",
         "fs.h": "c",
-        "dev.h": "c"
+        "dev.h": "c",
+        "tty.h": "c",
+        "sem.h": "c"
     },
     "workbench.editorAssociations": [
     {

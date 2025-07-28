@@ -23,6 +23,8 @@ int getpid(void);
 int yield (void);
 int execve(const char *name, char * const *argv, char * const *env);
 int print_msg(char * fmt, int arg);
+int wait(int* status);
+void _exit(int status);
 
 int open(const char *name, int flags, ...);
 int read(int file, char *ptr, int len);

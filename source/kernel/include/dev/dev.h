@@ -18,7 +18,6 @@ struct _dev_desc_t;
 /**
  * @brief 设备驱动接口
  */
-struct _dev_desc_t;
 typedef struct _device_t {
     struct _dev_desc_t * desc;      // 设备特性描述符
     int mode;                       // 操作模式
@@ -35,7 +34,7 @@ typedef struct _dev_desc_t {
     char name[DEV_NAME_SIZE];           // 设备名称
     int major;                          // 主设备号
 
-    int (*open) (device_t * dev) ;
+    int (*open) (device_t * dev);
     int (*read) (device_t * dev, int addr, char * buf, int size);
     int (*write) (device_t * dev, int addr, char * buf, int size);
     int (*control) (device_t * dev, int cmd, int arg0, int arg1);

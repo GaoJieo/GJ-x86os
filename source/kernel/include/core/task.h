@@ -32,6 +32,7 @@ typedef struct _task_t {
 		TASK_SLEEP,
 		TASK_READY,
 		TASK_WAITING,
+		TASK_ZOMBIE,
 	}state;
 
     char name[TASK_NAME_SIZE];		// 任务名字
@@ -44,10 +45,11 @@ typedef struct _task_t {
     int sleep_ticks;		// 睡眠时间
     int time_slice;			// 时间片
 	int slice_ticks;		// 递减时间片计数
+    int status;				// 进程执行结果
 
     file_t * file_table[TASK_OFILE_NR];	// 任务最多打开的文件数量
 
-	tss_t tss;				// 任务的TSS段
+	tss_t tss;				// 任务的TSS段#define SYS_printmsg            100
 	uint16_t tss_sel;		// tss选择子
 	
 	list_node_t run_node;		// 运行相关结点
@@ -91,6 +93,8 @@ task_t * task_first_task (void);
 int sys_getpid (void);
 int sys_fork (void);
 int sys_execve(char *name, char **argv, char **env);
+void sys_exit(int status);
+int sys_wait(int* status);
 
 #endif
 

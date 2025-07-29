@@ -64,11 +64,11 @@ int dev_open (int major, int minor, void * data) {
         free_dev->data = data;
         free_dev->desc = desc;
 
-        int err = desc->open(free_dev);
+        int err = desc->open(free_dev); // 调取设备对应的打开描述符，如tyy调用ttyopen
         if (err == 0) {
             free_dev->open_count = 1;
             irq_leave_protection(state);
-            return free_dev - dev_tbl;
+            return free_dev - dev_tbl; // 返回索引
         }
     }
 

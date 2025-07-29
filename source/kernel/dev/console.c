@@ -21,9 +21,10 @@ static int read_cursor_pos (void) {
 
     irq_state_t state = irq_enter_protection();
 
- 	outb(0x3D4, 0x0F);		// 写低地址
+    // 从VGA端口读
+ 	outb(0x3D4, 0x0F);		// 写光标低地址
 	pos = inb(0x3D5);
-	outb(0x3D4, 0x0E);		// 写高地址
+	outb(0x3D4, 0x0E);		// 写光标高地址
 	pos |= inb(0x3D5) << 8;   
 
     irq_leave_protection(state);

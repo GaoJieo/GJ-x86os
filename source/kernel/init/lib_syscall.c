@@ -3,16 +3,13 @@
  */
 #include "core/syscall.h"
 #include "os_cfg.h"
-#include "lib_syscall.h"
+#include "applib/lib_syscall.h"
 #include "malloc.h"
-#include <string.h>
-
 
 /**
  * 执行系统调用
  */
 static inline int sys_call (syscall_args_t * args) {
-    // 一个门描述符由8个字节组成，一个long为4字节，两个long填充一个门描述符
     const unsigned long sys_gate_addr[] = {0, SELECTOR_SYSCALL | 0};  // 使用特权级0
     int ret;
 
@@ -25,11 +22,11 @@ static inline int sys_call (syscall_args_t * args) {
             "push %[arg1]\n\t"
             "push %[arg0]\n\t"
             "push %[id]\n\t"
-             "lcalll *(%[gate])\n\n"
+            "lcalll *(%[gate])\n\n"
             :"=a"(ret)
             :[arg3]"r"(args->arg3), [arg2]"r"(args->arg2), [arg1]"r"(args->arg1),
-            [arg0]"r"(args->arg0), [id]"r"(args->id),
-            [gate]"r"(sys_gate_addr));
+    [arg0]"r"(args->arg0), [id]"r"(args->id),
+    [gate]"r"(sys_gate_addr));
     return ret;
 }
 
@@ -169,63 +166,5 @@ int dup (int file) {
     syscall_args_t args;
     args.id = SYS_dup;
     args.arg0 = file;
-    return sys_call(&args);
-}
-
-int ioctl(int fd, int cmd, int arg0, int arg1) {
-    syscall_args_t args;
-    args.id = SYS_ioctl;
-    args.arg0 = fd;
-    args.arg1 = cmd;
-    args.arg2 = arg0;
-    args.arg3 = arg1;
-    return sys_call(&args);
-}
-
-DIR * opendir(const char * name) {
-    DIR * dir = (DIR *)malloc(sizeof(DIR));
-    if (dir == (DIR *)0) {
-        return (DIR *)0;
-    }
-
-    syscall_args_t args;
-    args.id = SYS_opendir;
-    args.arg0 = (int)name;
-    args.arg1 = (int)dir;
-    int err = sys_call(&args);
-    if (err < 0) {
-        free(dir);
-        return (DIR *)0;
-    }
-    return dir;
-}
-
-struct dirent* readdir(DIR* dir) {
-
-    syscall_args_t args;
-    args.id = SYS_readdir;
-    args.arg0 = (int)dir;
-    args.arg1 = (int)&dir->dirent;
-    int err = sys_call(&args);
-    if (err < 0) {
-        return (struct dirent *)0;
-    }
-    return &dir->dirent;
-}
-
-int closedir(DIR *dir) {
-    syscall_args_t args;
-    args.id = SYS_closedir;
-    args.arg0 = (int)dir;
-    sys_call(&args);
-
-    free(dir);
-    return 0;
-}
-
-int unlink(const char *path) {
-    syscall_args_t args;
-    args.id = SYS_unlink;
-    args.arg0 = (int)path;
     return sys_call(&args);
 }

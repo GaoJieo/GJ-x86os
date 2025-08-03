@@ -8,6 +8,7 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <sys/file.h>
+#include "fs/file.h"
 
 static cli_t cli;
 static const char * promot = "sh >>";       // 命令行提示符
@@ -105,6 +106,158 @@ static int do_exit (int argc, char ** argv) {
     return 0;
 }
 
+/**
+ * @brief 列出文本文件内容
+ */
+static int do_less (int argc, char ** argv) {
+    int line_mode = 0;
+
+    int ch;
+    while ((ch = getopt(argc, argv, "lh")) != -1) {
+        switch (ch) {
+            case 'h':
+                puts("show file content");
+                puts("less [-l] file");
+                puts("-l show file line by line.");
+                break;
+            case 'l':
+                line_mode = 1;
+                break;
+            case '?':
+                if (optarg) {
+                    fprintf(stderr, "Unknown option: -%s\n", optarg);
+                }
+                optind = 1;        // getopt需要多次调用，需要重置
+                return -1;
+        }
+    }
+
+    // 索引已经超过了最后一个参数的位置，意味着没有传入要发送的信息
+    if (optind > argc - 1) {
+        fprintf(stderr, "no file\n");
+        optind = 1;        // getopt需要多次调用，需要重置
+        return -1;
+    }
+
+    FILE * file = fopen(argv[optind], "r");
+    if (file == NULL) {
+        fprintf(stderr, "open file failed. %s", argv[optind]);
+        optind = 1;        // getopt需要多次调用，需要重置
+        return -1;
+    }
+
+    char * buf = (char *)malloc(255);
+
+    if (line_mode == 0) {
+        while (fgets(buf, 255, file) != NULL)  {
+            fputs(buf, stdout);
+        }
+    } else {
+        // 不使用缓存，这样能直接立即读取到输入而不用等回车
+        setvbuf(stdin, NULL, _IONBF, 0);
+        ioctl(0, TTY_CMD_ECHO, 0, 0);
+        while (1) {
+            char * b = fgets(buf, 255, file);
+            if (b == NULL ) {
+                break;
+            }
+            fputs(buf, stdout);
+
+            int ch;
+            while ((ch = fgetc(stdin)) != 'n') {
+                if (ch == 'q') {
+                    goto less_quit;
+                }
+            }
+        }
+    less_quit:
+    // 恢复为行缓存
+        setvbuf(stdin, NULL,_IOLBF, BUFSIZ);
+        ioctl(0, TTY_CMD_ECHO, 1, 0);
+    }
+    free(buf);
+    fclose(file);
+    optind = 1;        // getopt需要多次调用，需要重置
+    return 0;
+}
+
+/**
+ * @brief 列出目录内容
+ */
+static int do_ls (int argc, char ** argv) {
+    // 打开目录
+	DIR * p_dir = opendir("temp");
+	if (p_dir == NULL) {
+		printf("open dir failed\n");
+		return -1;
+	}
+
+    // 然后进行遍历
+	struct dirent * entry;
+	while((entry = readdir(p_dir)) != NULL) {
+        strlwr(entry->name);
+		printf("%c %s %d\n",
+                entry->type == FILE_DIR ? 'd' : 'f',
+                entry->name,
+                entry->size);
+	}
+	closedir(p_dir);
+
+    return 0;
+}
+
+/**
+ * @brief 复制文件命令
+ */
+static int do_cp (int argc, char ** argv) {
+    if (argc < 3) {
+        puts("no [from] or no [to]");
+        return -1;
+    }
+
+    FILE * from, * to;
+    from = fopen(argv[1], "rb");
+    to = fopen(argv[2], "wb");
+    if (!from || !to) {
+        puts("open file failed.");
+        goto ls_failed;
+    }
+
+    char * buf = (char *)malloc(255);
+    int size = 0;
+    while ((size = fread(buf, 1, 255, from)) > 0) {
+        fwrite(buf, 1, size, to);
+    }
+    free(buf);
+
+ls_failed:
+    if (from) {
+        fclose(from);
+    }
+    if (to) {
+        fclose(to);
+    }
+    return 0;
+}
+
+/**
+ * @brief 删除文件命令
+ */
+static int do_remove (int argc, char ** argv) {
+    if (argc < 2) {
+        fprintf(stderr, "no file");
+        return -1;
+    }
+
+    int err = unlink(argv[1]);
+    if (err < 0) {
+        fprintf(stderr, "rm file failed: %s", argv[1]);
+        return err;
+    }
+
+    return 0;
+}
+
 // 命令列表
 static const cli_cmd_t cmd_list[] = {
     {
@@ -122,6 +275,26 @@ static const cli_cmd_t cmd_list[] = {
 		.useage = "echo [-n count] msg  -- echo something",
 		.do_func = do_echo,
 	},
+    {
+        .name = "ls",
+        .useage = "ls [dir] -- list director",
+        .do_func = do_ls,
+    },
+    {
+        .name = "less",
+        .useage = "list text file content",
+        .do_func = do_less,
+    },
+    {
+        .name = "cp",
+        .useage = "cp from to -- copy file",
+        .do_func = do_cp,
+    },
+    {
+       .name = "rm",
+        .useage = "rm file -- remove file",
+        .do_func = do_remove,
+    },
     {
         .name = "quit",
         .useage = "quit from shell",
@@ -166,6 +339,26 @@ static void run_builtin (const cli_cmd_t * cmd, int argc, char ** argv) {
     }
 }
 
+/**
+ * 遍历搜索目录，看看文件是否存在，存在返回文件所在路径
+ */
+static const char * find_exec_path (const char * file_name) {
+    static char path[255];
+
+    int fd = open(file_name, 0);
+    if (fd < 0) {
+        sprintf(path, "%s.elf", file_name);
+        fd = open(path, 0);
+        if (fd < 0) {
+            return (const char * )0;
+        }
+        close(fd);
+        return path;
+    } else {
+        close(fd);
+        return file_name;
+    }
+}
 
 /**
  * 试图运行当前文件
@@ -175,19 +368,12 @@ static void run_exec_file (const char * path, int argc, char ** argv) {
     if (pid < 0) {
         fprintf(stderr, "fork failed: %s", path);
     } else if (pid == 0) {
-        // 以下供测试exit使用
-        for (int i = 0; i < argc; i++) {
-            msleep(1000);
-            printf("arg %d = %s\n", i, argv[i]);
+        // 子进程
+        int err = execve(path, argv, (char * const *)0);
+        if (err < 0) {
+            fprintf(stderr, "exec failed: %s", path);
         }
         exit(-1);
-
-        // 子进程
-        // int err = execve(path, argv, (char * const *)0);
-        // if (err < 0) {
-        //     fprintf(stderr, "exec failed: %s", path);
-        // }
-        // exit(-1);
     } else {
 		// 等待子进程执行完毕
         int status;
@@ -251,15 +437,12 @@ int main (int argc, char **argv) {
             continue;
         }
 
-        // 测试程序，运行虚拟的程序
-        run_exec_file("", argc, argv);
-
         // 试图作为外部命令执行。只检查文件是否存在，不考虑是否可执行
-        // const char * path = find_exec_path(argv[0]);
-        // if (path) {
-        //     run_exec_file(path, argc, argv);
-        //     continue;
-        // }
+        const char * path = find_exec_path(argv[0]);
+        if (path) {
+            run_exec_file(path, argc, argv);
+            continue;
+        }
 
         // 找不到命令，提示错误
         fprintf(stderr, ESC_COLOR_ERROR"Unknown command: %s\n"ESC_COLOR_DEFAULT, cli.curr_input);

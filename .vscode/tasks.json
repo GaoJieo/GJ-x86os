@@ -7,10 +7,6 @@
             "label": "----------------- image write(不要点)",
             "type": "shell",
             "command": "bash ${workspaceRoot}/script/img-write-osx.sh",
-            "windows": {
-                // windows下特殊一些
-                "command": "${workspaceRoot}/script/img-write-win.bat",
-            },
             "linux":{
                 "command": "bash ${workspaceRoot}/script/img-write-linux.sh"
             },
@@ -22,10 +18,6 @@
             "label": "----------------- start qemu(不要点)",
             "type": "shell",
             "command": "bash ${workspaceRoot}/script/qemu-debug-osx.sh",
-            "windows": {
-                // windows下特殊一些
-                "command": "${workspaceRoot}/script/qemu-debug-win.bat",
-            },
             "linux":{
                 "command": "bash ${workspaceRoot}/script/qemu-debug-linux.sh",
             },

@@ -213,6 +213,7 @@ task_t * task_first_task (void) {
  */
 static void idle_task_entry (void) {
     for (;;) {
+        // cli();  // 关中断
         hlt();
     }
 }

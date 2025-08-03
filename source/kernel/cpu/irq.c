@@ -6,6 +6,7 @@
 #include "comm/cpu_instr.h"
 #include "tools/log.h"
 #include "os_cfg.h"
+#include "core/task.h"
 
 #define IDT_TABLE_NR			128				// IDT表项数量
 
@@ -46,8 +47,13 @@ static void do_default_handler (exception_frame_t * frame, const char * message)
     // todo: 留等以后补充打印任务栈的内容
 
     log_printf("--------------------------------");
-    for (;;) {
-        hlt();}
+    if (frame->cs & 0x3) {
+        sys_exit(frame->error_code);
+    } else {
+        for (;;) {
+            hlt();
+        }
+    }
 }
 
 void do_handler_unknown (exception_frame_t * frame) {
@@ -124,9 +130,13 @@ void do_handler_general_protection(exception_frame_t * frame) {
     log_printf("segment index: %d", frame->error_code & 0xFFF8);
 
     dump_core_regs(frame);
-    while (1) {
-        hlt();
-    }	
+    if (frame->cs & 0x3) {
+        sys_exit(frame->error_code);
+    } else {
+        for (;;) {
+            hlt();
+        }
+    }
 }
 
 void do_handler_page_fault(exception_frame_t * frame) {
@@ -151,8 +161,12 @@ void do_handler_page_fault(exception_frame_t * frame) {
     }
 
     dump_core_regs(frame);
-    while (1) {
-        hlt();
+    if (frame->cs & 0x3) {
+        sys_exit(frame->error_code);
+    } else {
+        for (;;) {
+            hlt();
+        }
     }
 }
 
